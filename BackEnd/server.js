@@ -17,58 +17,70 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 const mongoose = require('mongoose');
-mongoose.connect('mongodb+srv://admin:admin@martinscluster.w5rtkz0.mongodb.net/DB14');
+mongoose.connect('mongodb+srv://admin:admin@martinscluster.w5rtkz0.mongodb.net/DB14', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
 
 const movieSchema = new mongoose.Schema({
-  title:String,
-  year:String,
-  poster:String
+  title: String,
+  year: String,
+  poster: String,
 });
 
-const movieModel = new mongoose.model('myMovies',movieSchema);
+const movieModel = mongoose.model('myMovies', movieSchema);
 
+// Fetch all movies
 app.get('/api/movies', async (req, res) => {
+  try {
     const movies = await movieModel.find({});
-    res.status(200).json({movies})
+    res.status(200).json({ movies });
+  } catch (error) {
+    res.status(500).send('Error fetching movies');
+  }
 });
 
-app.get('/api/movie/:id', async (req ,res)=>{
-  const movie = await movieModel.findById(req.params.id);
-  res.json(movie);
-})
+// Fetch a single movie by ID
+app.get('/api/movie/:id', async (req, res) => {
+  try {
+    const movie = await movieModel.findById(req.params.id);
+    if (!movie) {
+      return res.status(404).send('Movie not found');
+    }
+    res.json(movie);
+  } catch (error) {
+    res.status(400).send('Invalid ID format');
+  }
+});
 
-app.post('/api/movies',async (req, res)=>{
-    console.log(req.body.title);
-    const {title, year, poster} = req.body;
-
-    const newMovie = new movieModel({title, year, poster});
+// Add a new movie
+app.post('/api/movies', async (req, res) => {
+  try {
+    const { title, year, poster } = req.body;
+    const newMovie = new movieModel({ title, year, poster });
     await newMovie.save();
-
-    res.status(201).json({"message":"Movie Added!",Movie:newMovie});
-})
-
-app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+    res.status(201).json({ message: 'Movie Added!', movie: newMovie });
+  } catch (error) {
+    res.status(500).send('Error adding movie');
+  }
 });
 
-// {
-//   "Title": "Avengers: Infinity War (server)",
-//   "Year": "2018",
-//   "imdbID": "tt4154756",
-//   "Type": "movie",
-//   "Poster": "https://m.media-amazon.com/images/M/MV5BMjMxNjY2MDU1OV5BMl5BanBnXkFtZTgwNzY1MTUwNTM@._V1_SX300.jpg"
-// },
-// {
-//   "Title": "Captain America: Civil War (server)",
-//   "Year": "2016",
-//   "imdbID": "tt3498820",
-//   "Type": "movie",
-//   "Poster": "https://m.media-amazon.com/images/M/MV5BMjQ0MTgyNjAxMV5BMl5BanBnXkFtZTgwNjUzMDkyODE@._V1_SX300.jpg"
-// },
-// {
-//   "Title": "World War Z (server)",
-//   "Year": "2013",
-//   "imdbID": "tt0816711",
-//   "Type": "movie",
-//   "Poster": "https://m.media-amazon.com/images/M/MV5BNDQ4YzFmNzktMmM5ZC00MDZjLTk1OTktNDE2ODE4YjM2MjJjXkEyXkFqcGdeQXVyNTA4NzY1MzY@._V1_SX300.jpg"
-// }
+// Update a movie by ID
+app.put('/api/movie/:id', async (req, res) => {
+  try {
+    console.log('GET /api/movie/:id called with id:', req.params.id);
+    const updatedMovie = await movieModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedMovie) {
+      return res.status(404).send('Movie not found');
+    }
+    res.json(updatedMovie);
+  } catch (error) {
+    console.log('Error in PUT /api/movie/:id:', error.message);
+    res.status(400).send('Invalid ID format or request body');
+  }
+});
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
